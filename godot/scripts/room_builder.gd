@@ -52,6 +52,7 @@ func _ready():
 	_build_daniel()
 	_build_hiding_spots()
 	_build_wall_drawing()
+	_build_mizrach_papercut()
 	_build_dust_motes()
 
 	player_spawn_position = Vector3(0.4, 0.0, 0.6)
@@ -599,34 +600,228 @@ func _build_cellar_hatch():
 # ---------------------------------------------------------------------------
 # Wall drawing
 # ---------------------------------------------------------------------------
+#
+# Rendered as a small procedural Image/ImageTexture rather than primitive
+# meshes, in the visual language of traditional Jewish papercutting
+# (mizrach / ketubah papercut): a symmetric silhouette composition — a
+# pomegranate tree over a small house, with a bird mirrored on either side.
+# Simple enough to still read as a child's own hand, but built on the
+# bilateral symmetry that tradition favours rather than a random scribble.
 
 func _build_wall_drawing():
 	var group = Spatial.new()
 	group.name = "WallDrawingVisual"
-	group.translation = Vector3(ROOM_HALF_X - 0.06, 1.3, -0.4)
+	# The east wall's inner (room-facing) surface sits at ROOM_HALF_X - WALL_THICK / 2
+	# (= 2.925); the paper is placed just proud of it so it isn't embedded in
+	# — and occluded by — the wall's own opaque collision box.
+	group.translation = Vector3(ROOM_HALF_X - 0.1, 1.3, -0.4)
 	group.rotation_degrees = Vector3(0, 0, 90)
 	add_child(group)
 
 	var paper_mat = _mat(Color(0.85, 0.8, 0.68), {"roughness": 0.95, "emissive": true, "emission_color": CANDLE_AMBER, "emission_energy": 0.08})
+	paper_mat.albedo_texture = _build_papercut_tree_texture(128)
 	var paper = PlaneMesh.new()
 	paper.size = Vector2(0.35, 0.45)
 	_add_mesh_only(group, paper, paper_mat, Vector3.ZERO, Vector3.ZERO, "Paper")
 
-	# A couple of simple crayon-style marks — kept deliberately minimal.
-	var mark_mat = _mat(CANDLE_AMBER, {"roughness": 0.9})
-	var sun = CylinderMesh.new()
-	sun.top_radius = 0.05
-	sun.bottom_radius = 0.05
-	sun.height = 0.004
-	var sun_mi = _add_mesh_only(group, sun, mark_mat, Vector3(0.08, 0.12, -0.003), Vector3(90, 0, 0), "Sun")
-
-	var line_mat = _mat(COAL_BLUE_GREY * 1.4, {"roughness": 0.9})
-	var line = _box(0.2, 0.01, 0.004)
-	var line_mi = _add_mesh_only(group, line, line_mat, Vector3(-0.02, -0.1, -0.003), Vector3.ZERO, "Scribble")
-
 	evidence_nodes["wallDrawing"] = group
 
 	_add_area(self, "wallDrawing", Vector3(0.4, 0.5, 0.15), group.translation, "WallDrawingArea")
+
+
+# ---------------------------------------------------------------------------
+# Mizrach-style papercut (small, non-interactive devotional object)
+# ---------------------------------------------------------------------------
+#
+# A modest framed paper-cutting near the west wall — a home devotional piece
+# in the same warm-paper aesthetic as the wall drawing, understated and not
+# a focal point. Purely decorative: no interactable Area, no gameplay hook.
+
+func _build_mizrach_papercut():
+	var group = Spatial.new()
+	group.name = "MizrachPapercut"
+	# Same wall-embedding consideration as the wall drawing: keep the frame
+	# just proud of the west wall's inner face (-ROOM_HALF_X + WALL_THICK / 2).
+	group.translation = Vector3(-ROOM_HALF_X + 0.1, 1.55, -0.85)
+	group.rotation_degrees = Vector3(0, 0, -90)
+	add_child(group)
+
+	# Local Y is the wall-normal (depth) axis once the group's rotation is
+	# applied. Keep the frame's outer face and the paper plane clearly
+	# separated along it so the frame box doesn't occlude the paper.
+	var frame_mat = _mat(SLATE * 0.6, {"roughness": 0.8})
+	_add_mesh_only(group, _box(0.15, 0.02, 0.15), frame_mat, Vector3(0, -0.01, 0), Vector3.ZERO, "Frame")
+
+	var paper_mat = _mat(Color(0.85, 0.8, 0.68), {"roughness": 0.95})
+	paper_mat.albedo_texture = _build_papercut_star_texture(64)
+	var paper = PlaneMesh.new()
+	paper.size = Vector2(0.11, 0.11)
+	_add_mesh_only(group, paper, paper_mat, Vector3(0, 0.01, 0), Vector3.ZERO, "Paper")
+
+
+# ---------------------------------------------------------------------------
+# Papercut texture generation — small procedural Images, no external assets.
+# ---------------------------------------------------------------------------
+
+func _build_papercut_tree_texture(size: int) -> ImageTexture:
+	var img = Image.new()
+	img.create(size, size, false, Image.FORMAT_RGBA8)
+	img.lock()
+
+	var paper = Color(0.85, 0.8, 0.68)
+	var ink = COAL_BLACK
+	var fruit = CANDLE_AMBER
+
+	_pc_fill_rect(img, 0, 0, size - 1, size - 1, size, paper)
+
+	var s = float(size) / 128.0
+	var cx = size / 2
+
+	# Ground line.
+	_pc_fill_rect(img, int(14 * s), int(99 * s), size - 1 - int(14 * s), int(100 * s), size, ink)
+
+	# House: a solid base block under a peaked roof, both symmetric about the
+	# vertical centreline, with a sliver of paper left showing as the door.
+	var base_top = int(78 * s)
+	var base_bot = int(99 * s)
+	_pc_fill_rect(img, cx - int(20 * s), base_top, cx + int(20 * s), base_bot, size, ink)
+
+	var apex_y = int(55 * s)
+	_pc_fill_triangle(img, Vector2(cx, apex_y), Vector2(cx - int(24 * s), base_top), Vector2(cx + int(24 * s), base_top), size, ink)
+
+	_pc_fill_rect(img, cx - int(4 * s), base_top + int(9 * s), cx + int(4 * s), base_bot, size, paper)
+
+	# Trunk rising from the roof apex into the canopy.
+	_pc_fill_rect(img, cx - int(3 * s), int(30 * s), cx + int(3 * s), apex_y + int(4 * s), size, ink)
+
+	# Canopy, with small warm pomegranates set symmetrically within it.
+	var canopy_cy = int(26 * s)
+	var canopy_r = int(22 * s)
+	_pc_fill_circle(img, cx, canopy_cy, canopy_r, size, ink)
+
+	var fruit_r = max(1, int(3 * s))
+	var offsets = [Vector2(0, -8), Vector2(-12, 2), Vector2(12, 2), Vector2(-8, 13), Vector2(8, 13)]
+	for o in offsets:
+		_pc_fill_circle(img, cx + int(o.x * s), canopy_cy + int(o.y * s), fruit_r, size, fruit)
+
+	# A small bird mirrored on either side of the tree.
+	_pc_draw_bird(img, cx - int(34 * s), canopy_cy + int(8 * s), s, size, ink)
+	_pc_draw_bird(img, cx + int(34 * s), canopy_cy + int(8 * s), s, size, ink)
+
+	img.unlock()
+
+	# The pinned-paper PlaneMesh maps its local X to world-vertical and its
+	# local Z to world-horizontal once the wall group's rotation is applied,
+	# which is transposed from the (horizontal-x, vertical-y) space the
+	# drawing above was composed in — so transpose the pixels to compensate.
+	img = _pc_transpose(img, size)
+
+	var tex = ImageTexture.new()
+	tex.create_from_image(img, Texture.FLAG_FILTER)
+	return tex
+
+
+func _build_papercut_star_texture(size: int) -> ImageTexture:
+	var img = Image.new()
+	img.create(size, size, false, Image.FORMAT_RGBA8)
+	img.lock()
+
+	var paper = Color(0.85, 0.8, 0.68)
+	var ink = COAL_BLACK
+	var spark = CANDLE_AMBER
+
+	_pc_fill_rect(img, 0, 0, size - 1, size - 1, size, paper)
+
+	var cx = size / 2
+	var cy = size / 2
+	var r = float(size) * 0.34
+
+	var up_pts = _pc_star_points(cx, cy, r, -90.0)
+	var down_pts = _pc_star_points(cx, cy, r, -30.0)
+	_pc_fill_triangle(img, up_pts[0], up_pts[1], up_pts[2], size, ink)
+	_pc_fill_triangle(img, down_pts[0], down_pts[1], down_pts[2], size, ink)
+
+	_pc_fill_circle(img, cx, cy, max(1, int(size * 0.035)), size, spark)
+
+	img.unlock()
+
+	img = _pc_transpose(img, size)
+
+	var tex = ImageTexture.new()
+	tex.create_from_image(img, Texture.FLAG_FILTER)
+	return tex
+
+
+func _pc_transpose(img: Image, size: int) -> Image:
+	var out = Image.new()
+	out.create(size, size, false, Image.FORMAT_RGBA8)
+	img.lock()
+	out.lock()
+	for y in range(size):
+		for x in range(size):
+			out.set_pixel(x, y, img.get_pixel(y, x))
+	out.unlock()
+	img.unlock()
+	return out
+
+
+func _pc_star_points(cx: int, cy: int, r: float, start_deg: float) -> Array:
+	var pts = []
+	for i in range(3):
+		var a = deg2rad(start_deg + i * 120.0)
+		pts.append(Vector2(cx + r * cos(a), cy + r * sin(a)))
+	return pts
+
+
+func _pc_draw_bird(img: Image, x: int, y: int, s: float, size: int, color: Color) -> void:
+	# A simple two-stroke "seagull" mark, the way a child sketches a bird.
+	_pc_fill_triangle(img, Vector2(x - int(10 * s), y), Vector2(x, y - int(6 * s)), Vector2(x - int(1 * s), y + int(1 * s)), size, color)
+	_pc_fill_triangle(img, Vector2(x + int(10 * s), y), Vector2(x, y - int(6 * s)), Vector2(x + int(1 * s), y + int(1 * s)), size, color)
+
+
+func _pc_set_px(img: Image, x: int, y: int, size: int, color: Color) -> void:
+	if x < 0 or y < 0 or x >= size or y >= size:
+		return
+	img.set_pixel(x, y, color)
+
+
+func _pc_fill_circle(img: Image, cx: int, cy: int, r: int, size: int, color: Color) -> void:
+	for y in range(cy - r, cy + r + 1):
+		for x in range(cx - r, cx + r + 1):
+			var dx = x - cx
+			var dy = y - cy
+			if dx * dx + dy * dy <= r * r:
+				_pc_set_px(img, x, y, size, color)
+
+
+func _pc_fill_rect(img: Image, x0: int, y0: int, x1: int, y1: int, size: int, color: Color) -> void:
+	for y in range(y0, y1 + 1):
+		for x in range(x0, x1 + 1):
+			_pc_set_px(img, x, y, size, color)
+
+
+func _pc_fill_triangle(img: Image, p0: Vector2, p1: Vector2, p2: Vector2, size: int, color: Color) -> void:
+	var min_x = int(min(p0.x, min(p1.x, p2.x)))
+	var max_x = int(max(p0.x, max(p1.x, p2.x)))
+	var min_y = int(min(p0.y, min(p1.y, p2.y)))
+	var max_y = int(max(p0.y, max(p1.y, p2.y)))
+	for y in range(min_y, max_y + 1):
+		for x in range(min_x, max_x + 1):
+			if _pc_point_in_triangle(Vector2(x + 0.5, y + 0.5), p0, p1, p2):
+				_pc_set_px(img, x, y, size, color)
+
+
+func _pc_tri_sign(p1: Vector2, p2: Vector2, p3: Vector2) -> float:
+	return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y)
+
+
+func _pc_point_in_triangle(pt: Vector2, v1: Vector2, v2: Vector2, v3: Vector2) -> bool:
+	var d1 = _pc_tri_sign(pt, v1, v2)
+	var d2 = _pc_tri_sign(pt, v2, v3)
+	var d3 = _pc_tri_sign(pt, v3, v1)
+	var has_neg = (d1 < 0) or (d2 < 0) or (d3 < 0)
+	var has_pos = (d1 > 0) or (d2 > 0) or (d3 > 0)
+	return not (has_neg and has_pos)
 
 
 # ---------------------------------------------------------------------------

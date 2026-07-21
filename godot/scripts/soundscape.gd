@@ -55,6 +55,15 @@ const THRESHOLD_REARM_MARGIN := 0.12
 const COUGH_MIN_INTERVAL := 4.5
 const COUGH_MAX_INTERVAL := 11.0
 
+# --- Felt tone (sparse emotional underline) ---
+# A single quiet held tone, built the same way as the other additive events
+# below (two detuned/interval-spaced sine partials + an AD envelope), used at
+# only a few weighted moments: once under the warning taps, and once at the
+# top of whichever resolve_*() fires. Deliberately NOT a synth pad -- the
+# slight detune between partials produces slow natural beating, like a struck
+# resonance settling, rather than a clean sustained chord.
+const FELT_TONE_BASE_HZ := 220.0
+
 # --- Nodes built in init() ---
 var window_anchor: Spatial
 var door_anchor: Spatial
@@ -76,6 +85,10 @@ var clock_time := 0.0
 # --- Continuous bed state: persistent oscillator phases / filter memory ---
 var wind_lp_y := 0.0
 var wind_gust_phase := 0.0
+# Very slow random-walk gain wander on the wind bed, so a long session reads
+# as alive rather than a static loop. Same technique as the rest of the file
+# (one-pole LP of white noise), just parked at a near-DC cutoff.
+var wind_wander_y := 0.0
 
 var candle_fast_y := 0.0
 var candle_slow_y := 0.0
@@ -270,6 +283,7 @@ func resolve_calm() -> void:
 	if not initialized:
 		return
 	_stop_pulse_loop()
+	_fire_felt_calm()
 	var now := clock_time
 	var cur_door: float = _ramp_value(door_bus_fade, now)
 	var cur_win: float = _ramp_value(window_bus_fade, now)
@@ -282,6 +296,7 @@ func resolve_near_miss() -> void:
 		return
 	_fire_clatter()
 	_fire_murmur()
+	_fire_felt_near_miss()
 	_stop_pulse_loop()
 	var now := clock_time
 	var hold := 0.55
@@ -297,6 +312,7 @@ func resolve_costly() -> void:
 	_stop_pulse_loop()
 	var now := clock_time
 	_fire_tense_swell()
+	_fire_felt_costly()
 
 	var shock_start := now + 0.95
 	var close_dur := 0.55
@@ -424,7 +440,10 @@ func _generate_all_samples(out: Array) -> void:
 	var wind_cutoff: float = 1100.0 + 260.0 * sin(wind_gust_phase * TWO_PI)
 	var wind_noise: float = randf() * 2.0 - 1.0
 	wind_lp_y = _one_pole_lp(wind_noise, wind_lp_y, wind_cutoff)
-	var wind_sample: float = wind_lp_y * WIND_HISS_BASE_GAIN
+	var wind_wander_noise: float = randf() * 2.0 - 1.0
+	wind_wander_y = _one_pole_lp(wind_wander_noise, wind_wander_y, 0.06)
+	var wind_wander_mult: float = 1.0 + wind_wander_y * 0.18
+	var wind_sample: float = wind_lp_y * WIND_HISS_BASE_GAIN * wind_wander_mult
 
 	# --- Baseline: candle hiss (band-ish noise via difference of two LPs) ---
 	var candle_noise: float = randf() * 2.0 - 1.0
@@ -611,6 +630,17 @@ func _sample_event(ev: Dictionary, t: float) -> float:
 			state["y_slow"] = _one_pole_lp(noise, state["y_slow"], slow_cut)
 			return (state["y_fast"] - state["y_slow"]) * 2.0 * env
 
+		"felt_tone":
+			var dur: float = ev["dur"]
+			var env: float = _env_ad(lt, ev["attack"], ev["decay_tau"], ev["peak"])
+			var freq_a: float = ev["freq_a"]
+			var frac: float = clamp(lt / max(dur, 0.0001), 0.0, 1.0)
+			var freq_b: float = lerp(ev["freq_b_start"], ev["freq_b_end"], frac)
+			state["pa"] = fmod(state["pa"] + freq_a * SAMPLE_DT, 1.0)
+			state["pb"] = fmod(state["pb"] + freq_b * SAMPLE_DT, 1.0)
+			var amp_b: float = ev["amp_b"]
+			return (sin(state["pa"] * TWO_PI) + amp_b * sin(state["pb"] * TWO_PI)) * env / (1.0 + amp_b)
+
 		"ring_tone":
 			var dur: float = ev["dur"]
 			var attack := 0.5
@@ -722,6 +752,20 @@ func _fire_warning_taps() -> void:
 	for i in range(3):
 		var jitter: float = randf() * 0.03
 		_push_event("warning_tap", "ambient", clock_time + i * 0.32 + jitter, 0.12, 0.075)
+	# Quiet emotional swell, arriving under the tail of the last tap and
+	# lingering briefly after -- a one-time underline for the moment danger
+	# enters the story. Two partials detuned ~0.6% apart for slow natural
+	# beating (singing-bowl-like), not a clean pad.
+	var swell_start: float = clock_time + 0.85
+	var extra := {
+		"freq_a": FELT_TONE_BASE_HZ + 44.0,
+		"freq_b_start": (FELT_TONE_BASE_HZ + 44.0) * 1.006,
+		"freq_b_end": (FELT_TONE_BASE_HZ + 44.0) * 1.006,
+		"attack": 0.6,
+		"decay_tau": 0.73,
+		"amp_b": 0.85,
+	}
+	_push_event("felt_tone", "ambient", swell_start, 5.0, 0.028, extra)
 
 
 func _fire_clatter() -> void:
@@ -741,6 +785,49 @@ func _fire_tense_swell() -> void:
 
 func _fire_ring_tone(start: float, dur: float) -> void:
 	_push_event("ring_tone", "ring", start, dur)
+
+
+func _fire_felt_calm() -> void:
+	# Warm, consonant resolution: a perfect fifth (3:2), fading gently.
+	var extra := {
+		"freq_a": FELT_TONE_BASE_HZ,
+		"freq_b_start": FELT_TONE_BASE_HZ * 1.5,
+		"freq_b_end": FELT_TONE_BASE_HZ * 1.5,
+		"attack": 0.5,
+		"decay_tau": 0.67,
+		"amp_b": 0.8,
+	}
+	_push_event("felt_tone", "ambient", clock_time, 4.5, 0.03, extra)
+
+
+func _fire_felt_near_miss() -> void:
+	# A touch more tension: starts a minor second above the base and resolves
+	# stepwise down to unison over the tone's own duration, mirroring the
+	# "close call, but it settles" shape of this ending.
+	var extra := {
+		"freq_a": FELT_TONE_BASE_HZ,
+		"freq_b_start": FELT_TONE_BASE_HZ * pow(2.0, 1.0 / 12.0),
+		"freq_b_end": FELT_TONE_BASE_HZ,
+		"attack": 0.4,
+		"decay_tau": 0.6,
+		"amp_b": 0.85,
+	}
+	_push_event("felt_tone", "ambient", clock_time, 4.0, 0.026, extra)
+
+
+func _fire_felt_costly() -> void:
+	# Brief single tone (with the same slight detune-beating as the warning
+	# swell) on the ambient bus, so it is carried into and swallowed by the
+	# existing shock-filter muffle rather than standing apart as its own cue.
+	var extra := {
+		"freq_a": FELT_TONE_BASE_HZ - 24.0,
+		"freq_b_start": (FELT_TONE_BASE_HZ - 24.0) * 1.008,
+		"freq_b_end": (FELT_TONE_BASE_HZ - 24.0) * 1.008,
+		"attack": 0.3,
+		"decay_tau": 0.35,
+		"amp_b": 0.85,
+	}
+	_push_event("felt_tone", "ambient", clock_time, 2.4, 0.022, extra)
 
 
 func _fire_cough_burst(t: float) -> void:
