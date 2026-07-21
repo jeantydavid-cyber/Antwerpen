@@ -1,0 +1,21 @@
+{
+  "name": "rimon-the-razzia",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Rimon — a first-person narrative demo. Chapter One: The Razzia (Antwerp, 1943).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "three": "^0.160.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.160.0",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.0"
+  }
+}

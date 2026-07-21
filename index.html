@@ -3,44 +3,59 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Antwerpen Adventure</title>
-<link rel="stylesheet" href="style.css" />
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-  }
-}
-</script>
+<meta name="color-scheme" content="dark" />
+<title>Rimon — Chapter One: The Razzia</title>
+<link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
-  <div id="blocker">
-    <div id="instructions">
-      <h1>Antwerpen Adventure</h1>
-      <p>A first-person night walk through Antwerp's Grote Markt.</p>
-      <p>Find the <strong>3 hidden diamonds</strong> hidden around the square to win.</p>
-      <p class="keys">
-        <span>WASD</span> move &nbsp;&middot;&nbsp;
-        <span>Mouse</span> look &nbsp;&middot;&nbsp;
-        <span>E</span> pick up
-      </p>
-      <p class="start">Click to start</p>
+  <div id="app">
+    <canvas id="scene"></canvas>
+
+    <div id="overlay-start" class="overlay">
+      <div class="panel">
+        <h1>Rimon</h1>
+        <h2>Chapter One &middot; Antwerp, 1943</h2>
+        <p class="body">
+          You are Sara. Above a shuttered shop, in one small room, you have kept your son
+          safe for a year. Tonight the street is not quiet.
+        </p>
+        <p class="controls">
+          <span>WASD</span> move &nbsp;&middot;&nbsp;
+          <span>Mouse</span> look &nbsp;&middot;&nbsp;
+          <span>E</span> interact &nbsp;&middot;&nbsp;
+          <span>Shift</span> hold to crouch
+        </p>
+        <button id="btn-start" type="button">Enter the room</button>
+        <label class="reduced-motion-toggle">
+          <input type="checkbox" id="chk-reduced-motion" />
+          Reduce motion &amp; screen effects
+        </label>
+      </div>
+    </div>
+
+    <div id="hud" class="hidden" aria-hidden="true">
+      <div id="reticle"></div>
+      <div id="interact-prompt" class="hidden" role="status"></div>
+    </div>
+
+    <div id="subtitle" class="hidden" role="status" aria-live="polite"></div>
+
+    <div id="choice-panel" class="overlay hidden" role="dialog" aria-modal="true" aria-label="A decision">
+      <div class="panel">
+        <p id="choice-prompt" class="body"></p>
+        <div id="choice-buttons" class="choice-buttons"></div>
+      </div>
+    </div>
+
+    <div id="overlay-epilogue" class="overlay hidden">
+      <div class="panel">
+        <p id="epilogue-text" class="body"></p>
+        <p class="tease">Chapter Two &middot; Antwerp &middot; today</p>
+        <button id="btn-restart" type="button">Restart</button>
+      </div>
     </div>
   </div>
 
-  <div id="hud" class="hidden">
-    <div id="crosshair">+</div>
-    <div id="objective">💎 <span id="diamond-count">0</span> / 3</div>
-    <div id="prompt" class="hidden">Press E to pick up</div>
-  </div>
-
-  <div id="win-screen" class="hidden">
-    <h1>All 3 diamonds found!</h1>
-    <p>Antwerp's treasure is safe once more.</p>
-    <p class="restart">Refresh to play again</p>
-  </div>
-
-  <script type="module" src="./js/main.js"></script>
+  <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
