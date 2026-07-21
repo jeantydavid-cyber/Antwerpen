@@ -4,7 +4,7 @@ const DEFAULT_SUBTITLE_DURATION_MS = 4500;
 
 const EPILOGUE_BODY: Record<EndingId, string> = {
   calm:
-    "Mevrouw De Vos's voice carried down the stairwell, easy as Sunday — 'Just my sister's boy, officer, sleeping off a fever.' Boots turned. A door closed somewhere else. Daniel slept through all of it, his hand still sticky with honey. Someone had opened a door for Sara once, long before this street had a name for what was happening. Tonight, she only had to hold still and let another door open for her.",
+    "Mevrouw De Vos's voice carried down the stairwell, easy as Sunday — 'Just my sister's boy, officer, sleeping off a fever.' Boots turned. A door closed somewhere else. Daniel slept through all of it, his hand still sticky with honey. Someone had opened a door for Sara once, long before this street had a name for what was happening. Tonight, she only had to hold still and trust that the debt would be repaid.",
   nearMiss:
     "Something crashed on the stairs — a pot, a curse, Mevrouw De Vos scolding a soldier for his clumsy boots in her narrow hall. Under the noise of it, Daniel's breath, and Sara's, and nothing else. When the street finally went quiet, Sara realized she had been holding the candle so tightly the wax had cooled between her fingers. Daniel was still warm. That was the only thing that had to be true.",
   costly:

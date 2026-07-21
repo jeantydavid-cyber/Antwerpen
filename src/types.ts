@@ -58,6 +58,7 @@ export interface LightingSystem {
   candleLight: THREE.PointLight;
   moonLight: THREE.Light;
   setTensionLevel: (level: number) => void;
+  setReducedMotion: (reduced: boolean) => void;
   resolveSteady: () => void;
   resolveGutterAndRecover: () => void;
   update: (dt: number, elapsed: number) => void;

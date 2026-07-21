@@ -17,9 +17,10 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.6;
+renderer.toneMappingExposure = 2.4;
 
 const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x0d1016, 0.055);
 const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.05, 50);
 
 const room = createRoomScene();
@@ -76,11 +77,18 @@ let coughT = 0;
 function applyReducedMotion(reduced: boolean) {
   controls.setReducedMotion(reduced);
   postfx.setReducedMotion(reduced);
+  lighting.setReducedMotion(reduced);
+  document.documentElement.classList.toggle('reduced-motion', reduced);
 }
 
-chkReducedMotion.checked = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const osReducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+chkReducedMotion.checked = osReducedMotionQuery.matches;
 applyReducedMotion(chkReducedMotion.checked);
 chkReducedMotion.addEventListener('change', () => applyReducedMotion(chkReducedMotion.checked));
+osReducedMotionQuery.addEventListener('change', (e) => {
+  chkReducedMotion.checked = e.matches;
+  applyReducedMotion(e.matches);
+});
 
 story.onBeatChange((beat) => {
   soundscape.setThreatProximity(THREAT_PROXIMITY_BY_BEAT[beat]);

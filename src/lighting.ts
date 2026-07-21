@@ -27,7 +27,15 @@ const GUTTER_MIN_BASE_SCALE = 0.05;
 const GUTTER_DIP_DURATION = 1.3;
 const GUTTER_RECOVER_DURATION = 3.4;
 
-const MOON_INTENSITY = 1.1;
+const MOON_INTENSITY = 3.2;
+
+const WINDOW_ANCHOR = new THREE.Vector3(0.9, 2.35, -3.6);
+const WINDOW_TARGET = new THREE.Vector3(0.5, 0, -1.1);
+const MOONBEAM_INTENSITY = 45;
+
+const REDUCED_MOTION_AMPLITUDE_SCALE = 0.35;
+const REDUCED_MOTION_JITTER_SCALE = 0.15;
+const REDUCED_MOTION_LERP_RATE = 3;
 
 function createFlameGlowTexture(): THREE.CanvasTexture {
   const size = 64;
@@ -60,6 +68,12 @@ export function createLightingSystem(scene: THREE.Scene, candleAnchor: THREE.Obj
   const moonLight = new THREE.HemisphereLight(PALETTE.coalBlueGrey, PALETTE.coalBlack, MOON_INTENSITY);
   scene.add(moonLight);
 
+  const moonBeam = new THREE.SpotLight(PALETTE.dirtySnow, MOONBEAM_INTENSITY, 12, Math.PI / 4.2, 0.7, 1.2);
+  moonBeam.position.copy(WINDOW_ANCHOR);
+  moonBeam.target.position.copy(WINDOW_TARGET);
+  scene.add(moonBeam);
+  scene.add(moonBeam.target);
+
   const flameTexture = createFlameGlowTexture();
   const flameMaterial = new THREE.SpriteMaterial({
     map: flameTexture,
@@ -83,6 +97,9 @@ export function createLightingSystem(scene: THREE.Scene, candleAnchor: THREE.Obj
   let resolveMode: ResolveMode = 'none';
   let resolveTimer = 0;
   let resolveStartAmplitude = FLICKER_MIN_AMPLITUDE;
+
+  let reducedMotionTarget = 0;
+  let reducedMotionFactor = 0;
 
   function amplitudeEnvelope(): number {
     const tensionEase = currentTension * currentTension;
@@ -119,6 +136,10 @@ export function createLightingSystem(scene: THREE.Scene, candleAnchor: THREE.Obj
       targetTension = clamp(level, 0, 1);
     },
 
+    setReducedMotion(reduced: boolean) {
+      reducedMotionTarget = reduced ? 1 : 0;
+    },
+
     resolveSteady() {
       resolveStartAmplitude = amplitudeEnvelope();
       resolveMode = 'steady';
@@ -133,10 +154,11 @@ export function createLightingSystem(scene: THREE.Scene, candleAnchor: THREE.Obj
 
     update(dt: number, elapsed: number) {
       currentTension = lerp(currentTension, targetTension, clamp(dt * TENSION_SMOOTH_RATE, 0, 1));
+      reducedMotionFactor = lerp(reducedMotionFactor, reducedMotionTarget, clamp(dt * REDUCED_MOTION_LERP_RATE, 0, 1));
       if (resolveMode !== 'none') resolveTimer += dt;
 
       const tensionEase = currentTension * currentTension;
-      const amplitude = amplitudeEnvelope();
+      const amplitude = amplitudeEnvelope() * lerp(1, REDUCED_MOTION_AMPLITUDE_SCALE, reducedMotionFactor);
       const baseScale = baseScaleEnvelope();
       const speed = lerp(FLICKER_MIN_SPEED, FLICKER_MAX_SPEED, tensionEase);
 
@@ -154,7 +176,7 @@ export function createLightingSystem(scene: THREE.Scene, candleAnchor: THREE.Obj
       candleLight.color.lerp(colorHigh, clamp(colorN + amplitude * 0.3, 0, 1));
 
       candleAnchor.getWorldPosition(tmpPosition);
-      const jitterScale = lerp(MIN_JITTER, MAX_JITTER, tensionEase) * baseScale;
+      const jitterScale = lerp(MIN_JITTER, MAX_JITTER, tensionEase) * baseScale * lerp(1, REDUCED_MOTION_JITTER_SCALE, reducedMotionFactor);
       tmpPosition.x += jitterX * jitterScale;
       tmpPosition.y += jitterY * jitterScale * 0.4;
       tmpPosition.z += jitterZ * jitterScale * 0.6;
