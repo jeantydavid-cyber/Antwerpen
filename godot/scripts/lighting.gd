@@ -42,6 +42,7 @@ var candle_light: OmniLight
 var moon_light: OmniLight
 var world_environment: WorldEnvironment
 var environment: Environment
+var gi_probe: GIProbe
 
 var candle_anchor: Spatial = null
 var candle_base_position := Vector3.ZERO
@@ -67,6 +68,17 @@ func _ready():
 	_build_environment()
 	_build_candle_light()
 	_build_moon_light()
+	_build_gi_probe()
+
+	# GIProbe needs the room's geometry to have gone through at least one
+	# render frame before baking; the bake itself is a snapshot (Godot 3's
+	# GIProbe is static/baked, not real-time), so it captures a representative
+	# average of the candle's bounce light rather than dancing with the
+	# flicker -- still a real improvement over flat ambient alone.
+	yield(get_tree(), "idle_frame")
+	yield(get_tree(), "idle_frame")
+	if gi_probe != null:
+		gi_probe.bake()
 
 
 func _setup_noise():
@@ -153,6 +165,18 @@ func _build_moon_light():
 	# position near the window is what reads as a directional cold accent.
 	# MOON_AIM_TARGET is kept only as documentation of intent / for a future
 	# SpotLight swap.
+
+
+func _build_gi_probe():
+	gi_probe = GIProbe.new()
+	gi_probe.extents = Vector3(3.6, 1.7, 3.0)
+	gi_probe.translation = Vector3(0, 1.5, 0)
+	gi_probe.subdiv = GIProbe.SUBDIV_128
+	gi_probe.dynamic_range = 4
+	gi_probe.energy = 1.3
+	gi_probe.propagation = 0.9
+	gi_probe.interior = true
+	add_child(gi_probe)
 
 
 func attach_to_candle(anchor: Spatial):

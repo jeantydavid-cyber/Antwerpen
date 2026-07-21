@@ -165,6 +165,7 @@ func _new_static_body(pos: Vector3, name_: String) -> StaticBody:
 func _add_box_part(body: Spatial, size: Vector3, local_pos: Vector3, mat: SpatialMaterial, name_: String, with_collision := true) -> MeshInstance:
 	var mi = MeshInstance.new()
 	mi.name = name_
+	mi.use_in_baked_light = true
 	var mesh = CubeMesh.new()
 	mesh.size = size
 	mi.mesh = mesh
@@ -185,6 +186,7 @@ func _add_box_part(body: Spatial, size: Vector3, local_pos: Vector3, mat: Spatia
 func _add_mesh_only(parent: Spatial, mesh: Mesh, mat: SpatialMaterial, local_pos: Vector3, rot_deg: Vector3, name_: String) -> MeshInstance:
 	var mi = MeshInstance.new()
 	mi.name = name_
+	mi.use_in_baked_light = true
 	mi.mesh = mesh
 	mi.material_override = mat
 	mi.translation = local_pos
@@ -488,11 +490,18 @@ func _build_daniel():
 	_add_mesh_only(daniel_anchor, arm_mesh, cloth_mat, Vector3(0.19, 0.55, 0.05), Vector3(0, 0, 20), "ArmLeft")
 	_add_mesh_only(daniel_anchor, arm_mesh, cloth_mat, Vector3(-0.19, 0.55, 0.05), Vector3(0, 0, -20), "ArmRight")
 
-	# Head — no face detail, deliberately.
+	# Head — no face detail, deliberately. Sized for a small child, not an adult.
 	var head_mesh = SphereMesh.new()
-	head_mesh.radius = 0.15
-	head_mesh.height = 0.3
-	_add_mesh_only(daniel_anchor, head_mesh, skin_mat, Vector3(0, 0.98, 0), Vector3.ZERO, "Head")
+	head_mesh.radius = 0.105
+	head_mesh.height = 0.21
+	_add_mesh_only(daniel_anchor, head_mesh, skin_mat, Vector3(0, 0.9, 0), Vector3.ZERO, "Head")
+
+	# Short neck so the head doesn't look like it's resting directly on the torso.
+	var neck_mesh = CylinderMesh.new()
+	neck_mesh.top_radius = 0.05
+	neck_mesh.bottom_radius = 0.06
+	neck_mesh.height = 0.08
+	_add_mesh_only(daniel_anchor, neck_mesh, skin_mat, Vector3(0, 0.825, 0), Vector3.ZERO, "Neck")
 
 	daniel_default_transform = daniel_anchor.transform
 

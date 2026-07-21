@@ -88,6 +88,8 @@ func _on_start_pressed():
 		return
 	started = true
 	player.lock()
+	ui.hide_start_overlay()
+	ui.show_hud()
 	soundscape.init()
 	Story.start_story()
 

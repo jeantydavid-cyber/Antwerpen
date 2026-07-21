@@ -201,6 +201,14 @@ func hide_hud():
 	_hud_layer.visible = false
 
 
+func hide_start_overlay():
+	_start_overlay.visible = false
+
+
+func show_start_overlay():
+	_start_overlay.visible = true
+
+
 func show_interact_prompt(label):
 	_interact_prompt.text = label
 	_interact_prompt.visible = true
