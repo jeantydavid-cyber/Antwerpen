@@ -476,7 +476,9 @@ func _build_daniel():
 	var torso_mesh = CapsuleMesh.new()
 	torso_mesh.radius = 0.16
 	torso_mesh.mid_height = 0.4
-	_add_mesh_only(daniel_anchor, torso_mesh, cloth_mat, Vector3(0, 0.45, 0), Vector3.ZERO, "Torso")
+	# CapsuleMesh's long axis is local Z by default in Godot 3.5; rotate it
+	# upright so the torso stands along Y.
+	_add_mesh_only(daniel_anchor, torso_mesh, cloth_mat, Vector3(0, 0.45, 0), Vector3(90, 0, 0), "Torso")
 
 	# Arms.
 	var arm_mesh = CylinderMesh.new()
