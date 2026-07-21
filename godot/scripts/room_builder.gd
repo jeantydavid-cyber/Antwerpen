@@ -753,13 +753,18 @@ func _build_papercut_star_texture(size: int) -> ImageTexture:
 
 
 func _pc_transpose(img: Image, size: int) -> Image:
+	# Transposed (so the drawing's horizontal/vertical composition axes land
+	# on the correct world axes once the wall group's rotation is applied)
+	# and flipped along the way, so "up" in the drawing (small source y,
+	# e.g. the canopy) ends up above "down" (large source y, e.g. the
+	# ground line) in the rendered result rather than inverted.
 	var out = Image.new()
 	out.create(size, size, false, Image.FORMAT_RGBA8)
 	img.lock()
 	out.lock()
 	for y in range(size):
 		for x in range(size):
-			out.set_pixel(x, y, img.get_pixel(y, x))
+			out.set_pixel(x, y, img.get_pixel(y, size - 1 - x))
 	out.unlock()
 	img.unlock()
 	return out
